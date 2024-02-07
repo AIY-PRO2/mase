@@ -43,6 +43,8 @@ class SearchStrategyOptuna(SearchStrategyBase):
 
     def sampler_map(self, name):
         match name.lower():
+            case "brute":
+                sampler = optuna.samplers.BruteForceSampler() # list in the doc
             case "random":
                 sampler = optuna.samplers.RandomSampler()
             case "tpe":

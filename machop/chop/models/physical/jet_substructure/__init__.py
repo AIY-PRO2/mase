@@ -5,6 +5,39 @@ Jet Substructure Models used in the LogicNets paper
 import torch.nn as nn
 
 
+class JSC_Test(nn.Module):
+    def __init__(self, info):
+        super(JSC_Test, self).__init__()
+        self.seq_blocks = nn.Sequential(
+            # 1st LogicNets Layer
+            nn.BatchNorm1d(16),  # input_quant       # 0
+            nn.ReLU(16),  # 1
+            nn.Linear(16, 8),  # linear              # 2
+            nn.BatchNorm1d(8),  # output_quant       # 3
+            nn.ReLU(8),  # 4
+            # 2nd LogicNets Layer
+            nn.Linear(8, 8),  # 5
+            nn.BatchNorm1d(8),  # 6
+            nn.ReLU(8),  # 7
+
+            nn.Linear(8, 32),  
+            nn.BatchNorm1d(32),  
+            nn.ReLU(32),
+
+            nn.Linear(32, 12),  
+            nn.BatchNorm1d(12),  
+            nn.ReLU(12),
+
+            nn.Linear(12, 5),  
+            nn.BatchNorm1d(5),  
+            nn.ReLU(5),
+
+
+        )
+
+    def forward(self, x):
+        return self.seq_blocks(x)
+
 class JSC_Toy(nn.Module):
     def __init__(self, info):
         super(JSC_Toy, self).__init__()
@@ -87,6 +120,8 @@ def get_jsc_toy(info):
     # TODO: Tanh is not supported by mase yet
     return JSC_Toy(info)
 
+def get_jsc_test(info):
+    return JSC_Test(info)
 
 def get_jsc_tiny(info):
     return JSC_Tiny(info)

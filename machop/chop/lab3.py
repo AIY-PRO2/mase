@@ -67,3 +67,83 @@ _ = model(**dummy_in)
 
 # generate the mase graph and initialize node metadata
 mg = MaseGraph(model=model)
+
+pass_args = {
+"by": "type",
+"default": {"config": {"name": None}},
+"linear": {
+        "config": {
+            "name": "integer",
+            # data
+            "data_in_width": 8,
+            "data_in_frac_width": 4,
+            # weight
+            "weight_width": 8,
+            "weight_frac_width": 4,
+            # bias
+            "bias_width": 8,
+            "bias_frac_width": 4,
+        }
+},}
+
+import copy
+# build a search space
+data_in_frac_widths = [(16, 8), (8, 6), (8, 4), (4, 2)]
+w_in_frac_widths = [(16, 8), (8, 6), (8, 4), (4, 2)]
+search_spaces = []
+for d_config in data_in_frac_widths:
+    for w_config in w_in_frac_widths:
+        pass_args['linear']['config']['data_in_width'] = d_config[0]
+        pass_args['linear']['config']['data_in_frac_width'] = d_config[1]
+        pass_args['linear']['config']['weight_width'] = w_config[0]
+        pass_args['linear']['config']['weight_frac_width'] = w_config[1]
+        # dict.copy() and dict(dict) only perform shallow copies
+        # in fact, only primitive data types in python are doing implicit copy when a = b happens
+        search_spaces.append(copy.deepcopy(pass_args))
+
+    
+    
+import time
+# grid search
+def compute_latency(model, inputs):
+    start_time = time.time()
+    _ = model(**inputs)
+    end_time = time.time()
+    return end_time - start_time
+
+import torch
+from torchmetrics.classification import MulticlassAccuracy
+
+mg, _ = init_metadata_analysis_pass(mg, None)
+mg, _ = add_common_metadata_analysis_pass(mg, {"dummy_in": dummy_in})
+mg, _ = add_software_metadata_analysis_pass(mg, None)
+
+metric = MulticlassAccuracy(num_classes=5)
+num_batchs = 5
+# This first loop is basically our search strategy,
+# in this case, it is a simple brute force search
+
+recorded_accs = []
+for i, config in enumerate(search_spaces):
+    mg, _ = quantize_transform_pass(mg, config)
+    j = 0
+
+    # this is the inner loop, where we also call it as a runner.
+    acc_avg, loss_avg, latency= 0, 0,0 #added latency metric
+    accs, losses, latencies = [], [], []
+    for inputs in data_module.train_dataloader():
+        xs, ys = inputs
+        preds = mg.model(xs)
+        loss = torch.nn.functional.cross_entropy(preds, ys)
+        latency = compute_latency(mg.model, inputs)
+        acc = metric(preds, ys)
+        accs.append(acc)
+        latencies.append(latency)
+        losses.append(loss)
+        if j > num_batchs:
+            break
+        j += 1
+    acc_avg = sum(accs) / len(accs)
+    loss_avg = sum(losses) / len(losses)
+    recorded_accs.append(acc_avg)
+    latency_avg= sum(latencies)/len(latencies)

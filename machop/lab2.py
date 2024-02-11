@@ -89,6 +89,15 @@ pass_args = {
             "bias_frac_width": 4,
         }
     },
+   
+    "relu": {
+        "config": {
+            "name": "integer",
+            "in_width": 8,
+            "in_frac_width": 4,
+       
+        }
+    },
 }
 
 from chop.passes.graph.transforms import (
